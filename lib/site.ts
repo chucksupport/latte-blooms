@@ -4,7 +4,6 @@ export const siteConfig = {
   tagline: "A little joy, delivered",
   description:
     "Send a little joy with Latte Blooms. Choose flowers, add their favorite coffee, and personalize a thoughtful delivery.",
-  // TODO: swap for the real domain once purchased / DNS is pointed.
   url: "https://latteblooms.com",
   phone: "(330) 201-8614",
   phoneHref: "tel:+13302018614",

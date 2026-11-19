@@ -33,6 +33,6 @@ Without `RESEND_API_KEY`, submitted gift requests are logged to the server conso
 
 ## TODO before launch
 
-- Real domain in `lib/site.ts` (`url`) and `.env.example`.
+- Point latteblooms.com DNS at the Render service (custom domain in the Render dashboard).
 - Owner inbox (`REQUEST_FORM_TO`) and a verified Resend sender.
 - Replace the hero mockup photo (`public/gift.jpg`) with a real product photo. The current mockup shows a third-party coffee cup brand.
