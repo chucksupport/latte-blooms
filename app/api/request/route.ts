@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { sendGiftRequest, type GiftRequest } from "@/lib/email";
-import { collectionNames, occasions, timeWindows } from "@/lib/site";
+import { coffeeShops, normalizeDrink, type DrinkSelection } from "@/lib/menu";
+import { collectionNames, occasions, pricing, timeWindows } from "@/lib/site";
 
 type Body = Partial<Record<keyof GiftRequest | "website", unknown>>;
 
@@ -25,12 +26,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Drinks: every one must match the menu so the server-side price is trusted.
+  const rawDrinks = Array.isArray(body.drinks) ? body.drinks : [];
+  if (rawDrinks.length < 1) {
+    return bad("Please add at least one drink.");
+  }
+  if (rawDrinks.length > pricing.maxDrinks) {
+    return bad(
+      `Online orders are limited to ${pricing.maxDrinks} drinks. For larger orders, call or text us.`
+    );
+  }
+  const drinks: DrinkSelection[] = [];
+  for (const raw of rawDrinks) {
+    const drink = normalizeDrink(raw);
+    if (!drink) return bad("One of the drinks isn't on our menu. Please re-check it.");
+    drinks.push(drink);
+  }
+
   const data: GiftRequest = {
     occasion: str(body.occasion, 60),
     occasionDetails: str(body.occasionDetails, 200),
     bouquet: str(body.bouquet, 60),
-    coffeeShop: str(body.coffeeShop, 150),
-    coffeeOrder: str(body.coffeeOrder, 800),
+    coffeeShop: str(body.coffeeShop, 40),
+    coffeeShopDetails: str(body.coffeeShopDetails, 150),
+    drinks,
     giftNote: str(body.giftNote, 500),
     recipient: str(body.recipient, 100),
     address: str(body.address, 250),
@@ -45,7 +64,6 @@ export async function POST(request: Request) {
   const required: (keyof GiftRequest)[] = [
     "bouquet",
     "coffeeShop",
-    "coffeeOrder",
     "recipient",
     "address",
     "deliveryDate",
@@ -63,6 +81,9 @@ export async function POST(request: Request) {
   }
   if (!(collectionNames as string[]).includes(data.bouquet)) {
     return bad("Please choose a bouquet collection.");
+  }
+  if (!(coffeeShops as readonly string[]).includes(data.coffeeShop)) {
+    return bad("Please choose a coffee shop.");
   }
   if (!(timeWindows as readonly string[]).includes(data.timeWindow)) {
     return bad("Please choose a delivery time window.");

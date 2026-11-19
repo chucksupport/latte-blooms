@@ -4,11 +4,21 @@ import * as React from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { useBouquet } from "@/components/bouquet-context";
+import { DrinkBuilder, selectClass } from "@/components/drink-builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { GiftRequest } from "@/lib/email";
+import {
+  coffeeShops,
+  defaultDrink,
+  describeDrink,
+  formatMoney,
+  priceDrink,
+  priceOrder,
+  type DrinkSelection,
+} from "@/lib/menu";
 import {
   collections,
   occasions,
@@ -20,12 +30,14 @@ import {
 
 type Status = "idle" | "review" | "submitting" | "success" | "error";
 
-const FIELDS: { key: keyof GiftRequest; label: string }[] = [
+type TextKey = Exclude<keyof GiftRequest, "drinks">;
+
+const FIELDS: { key: TextKey; label: string }[] = [
   { key: "occasion", label: "Occasion" },
   { key: "occasionDetails", label: "Occasion details" },
   { key: "bouquet", label: "Bouquet collection" },
-  { key: "coffeeShop", label: "Preferred coffee shop" },
-  { key: "coffeeOrder", label: "Their coffee order" },
+  { key: "coffeeShop", label: "Coffee shop" },
+  { key: "coffeeShopDetails", label: "Shop location or name" },
   { key: "giftNote", label: "Gift note" },
   { key: "recipient", label: "Recipient" },
   { key: "address", label: "Delivery address" },
@@ -37,9 +49,6 @@ const FIELDS: { key: keyof GiftRequest; label: string }[] = [
   { key: "senderPhone", label: "Your phone" },
 ];
 
-const selectClass =
-  "flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
-
 function todayIso() {
   const d = new Date();
   return [
@@ -49,11 +58,36 @@ function todayIso() {
   ].join("-");
 }
 
+function PriceSummary({ drinks }: { drinks: DrinkSelection[] }) {
+  const totals = priceOrder(drinks, pricing);
+  const drinkLabel = `${drinks.length} ${drinks.length === 1 ? "drink" : "drinks"}`;
+  return (
+    <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 rounded-lg border border-border bg-white/60 p-4 text-sm">
+      <dt>Signature bouquet</dt>
+      <dd className="text-right">{formatMoney(totals.flowers)}</dd>
+      <dt>Coffee ({drinkLabel})</dt>
+      <dd className="text-right">{formatMoney(totals.drinks)}</dd>
+      <dt>Delivery (within {pricing.deliveryRadiusMiles} miles)</dt>
+      <dd className="text-right">{formatMoney(totals.delivery)}</dd>
+      <dt className="mt-2 border-t border-border pt-2 font-semibold">
+        Estimated total
+      </dt>
+      <dd className="mt-2 border-t border-border pt-2 text-right font-semibold">
+        {formatMoney(totals.total)}
+      </dd>
+    </dl>
+  );
+}
+
 export function GiftRequestForm() {
   const { bouquet, setBouquet } = useBouquet();
   const [status, setStatus] = React.useState<Status>("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<GiftRequest | null>(null);
+  const [drinks, setDrinks] = React.useState<DrinkSelection[]>(() => [
+    defaultDrink(),
+  ]);
+  const [coffeeShop, setCoffeeShop] = React.useState<string>(coffeeShops[0]);
   const formRef = React.useRef<HTMLFormElement>(null);
   const dialogRef = React.useRef<HTMLDialogElement>(null);
 
@@ -76,7 +110,8 @@ export function GiftRequestForm() {
       occasionDetails: get("occasionDetails"),
       bouquet: get("bouquet"),
       coffeeShop: get("coffeeShop"),
-      coffeeOrder: get("coffeeOrder"),
+      coffeeShopDetails: get("coffeeShopDetails"),
+      drinks,
       giftNote: get("giftNote"),
       recipient: get("recipient"),
       address: get("address"),
@@ -111,6 +146,8 @@ export function GiftRequestForm() {
       }
       formRef.current?.reset();
       setBouquet("");
+      setDrinks([defaultDrink()]);
+      setCoffeeShop(coffeeShops[0]);
       setStatus("success");
     } catch (err) {
       setStatus("review");
@@ -141,6 +178,8 @@ export function GiftRequestForm() {
     );
   }
 
+  const draftTotals = draft ? priceOrder(draft.drinks, pricing) : null;
+
   return (
     <>
       <form
@@ -159,11 +198,13 @@ export function GiftRequestForm() {
           </legend>
           <p className="text-sm text-muted-foreground">
             <strong className="text-foreground">
-              ${pricing.bundle} gift bundle + ${pricing.delivery} nearby
-              delivery = ${pricing.subtotal}
+              ${pricing.flowers} signature bouquet
             </strong>{" "}
-            before optional extras and applicable tax. We confirm the delivery
-            fee for your address before payment.
+            + their coffee at menu price +{" "}
+            <strong className="text-foreground">
+              ${pricing.delivery} delivery
+            </strong>{" "}
+            {`within ${pricing.deliveryRadiusMiles} miles. Farther out? We'll quote delivery before you pay.`}
           </p>
 
           <div className="grid gap-2">
@@ -223,29 +264,6 @@ export function GiftRequestForm() {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="coffeeShop">Preferred coffee shop *</Label>
-            <Input
-              id="coffeeShop"
-              name="coffeeShop"
-              required
-              maxLength={150}
-              placeholder="Shop name and location"
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="coffeeOrder">Their coffee order *</Label>
-            <Textarea
-              id="coffeeOrder"
-              name="coffeeOrder"
-              required
-              maxLength={800}
-              rows={3}
-              placeholder="Size, hot or iced, drink, milk, flavors, and any customizations..."
-            />
-          </div>
-
-          <div className="grid gap-2">
             <Label htmlFor="giftNote">
               Gift note{" "}
               <span className="font-normal text-muted-foreground">
@@ -260,6 +278,66 @@ export function GiftRequestForm() {
               placeholder="What would you like the card to say? Include who it's from."
             />
           </div>
+        </fieldset>
+
+        <fieldset className="mb-6 grid gap-4">
+          <legend className="mb-3 font-serif text-[27px] font-medium">
+            Their coffee
+          </legend>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="coffeeShop">Coffee shop *</Label>
+              <select
+                id="coffeeShop"
+                name="coffeeShop"
+                required
+                value={coffeeShop}
+                onChange={(e) => setCoffeeShop(e.target.value)}
+                className={selectClass}
+              >
+                {coffeeShops.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="coffeeShopDetails">
+                Which location?{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                id="coffeeShopDetails"
+                name="coffeeShopDetails"
+                maxLength={150}
+                placeholder={
+                  coffeeShop === coffeeShops[0]
+                    ? "Their usual Starbucks, if they have one"
+                    : "Shop name and town"
+                }
+              />
+            </div>
+          </div>
+          {coffeeShop !== coffeeShops[0] ? (
+            <p className="text-xs text-sand">
+              Prices below are based on Starbucks&apos; menu. We&apos;ll match
+              the drink as closely as we can at {coffeeShop === coffeeShops[1] ? coffeeShop : "your shop"} and
+              confirm the actual price before you pay.
+            </p>
+          ) : null}
+
+          <DrinkBuilder drinks={drinks} onChange={setDrinks} />
+
+          <PriceSummary drinks={drinks} />
+          <p className="text-xs text-sand">
+            Drink prices are estimates based on the shop&apos;s menu and may
+            change with the season. Your final total is confirmed by email
+            before payment.
+          </p>
         </fieldset>
 
         <fieldset className="mb-6 grid gap-4">
@@ -412,12 +490,18 @@ export function GiftRequestForm() {
             &times;
           </button>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Review your request, then submit it. Your bundle is ${pricing.bundle}.
-          With ${pricing.delivery} nearby delivery, the subtotal is $
-          {pricing.subtotal} before extras and applicable tax. We confirm
-          availability and your final total before payment.
-        </p>
+        {draftTotals ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Review your request, then submit it. Estimated total{" "}
+            <strong className="text-foreground">
+              {formatMoney(draftTotals.total)}
+            </strong>{" "}
+            ({formatMoney(draftTotals.flowers)} flowers +{" "}
+            {formatMoney(draftTotals.drinks)} coffee +{" "}
+            {formatMoney(draftTotals.delivery)} delivery). We confirm
+            availability and your final total before payment.
+          </p>
+        ) : null}
         {draft ? (
           <dl className="mt-4 max-h-[45vh] overflow-auto rounded-md border border-border bg-white p-4 text-sm">
             {FIELDS.map(({ key, label }) => {
@@ -427,6 +511,25 @@ export function GiftRequestForm() {
                 <div key={key} className="mb-2 grid gap-0.5 last:mb-0">
                   <dt className="text-xs font-semibold text-sand">{label}</dt>
                   <dd className="whitespace-pre-wrap">{value}</dd>
+                  {key === "coffeeShopDetails" || (key === "coffeeShop" && !draft.coffeeShopDetails) ? (
+                    <>
+                      <dt className="mt-2 text-xs font-semibold text-sand">
+                        Drinks
+                      </dt>
+                      <dd>
+                        <ol className="list-decimal pl-5">
+                          {draft.drinks.map((d, i) => (
+                            <li key={i}>
+                              {describeDrink(d)}{" "}
+                              <span className="text-muted-foreground">
+                                ({formatMoney(priceDrink(d))})
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </dd>
+                    </>
+                  ) : null}
                 </div>
               );
             })}

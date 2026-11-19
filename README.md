@@ -25,7 +25,8 @@ Without `RESEND_API_KEY`, submitted gift requests are logged to the server conso
 
 ## Where things live
 
-- `lib/site.ts` - name, phone, email, pricing, bouquet collections, occasions. Edit content here first.
+- `lib/site.ts` - name, phone, email, base pricing (flowers, delivery fee and radius, max drinks per order), bouquet collections, occasions. Edit content here first.
+- `lib/menu.ts` - the drink menu with per-size prices, milks, syrups, extras, and the price/validation helpers shared by the form and the API. Prices are a Starbucks-based estimate; edit the numbers here.
 - `app/page.tsx` - the single landing page (hero, collections, how it works, request form).
 - `components/gift-request-form.tsx` - the form with its review dialog.
 - `app/api/request/route.ts` - validates the request and hands it to `lib/email.ts`.

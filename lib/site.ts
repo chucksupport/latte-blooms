@@ -11,12 +11,14 @@ export const siteConfig = {
   email: "hello@latteblooms.com",
 } as const;
 
+// Pricing. Flowers are a flat price; each drink is priced from the menu in
+// lib/menu.ts; delivery is flat inside the delivery radius and quoted beyond it.
+// TODO: confirm the delivery radius (and where it's measured from) with the owner.
 export const pricing = {
-  bundle: 49,
+  flowers: 25,
   delivery: 8,
-  get subtotal() {
-    return this.bundle + this.delivery;
-  },
+  deliveryRadiusMiles: 15,
+  maxDrinks: 4,
 } as const;
 
 export const collections = [

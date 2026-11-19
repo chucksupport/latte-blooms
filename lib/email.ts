@@ -1,5 +1,12 @@
 import { Resend } from "resend";
 
+import {
+  describeDrink,
+  formatMoney,
+  priceDrink,
+  priceOrder,
+  type DrinkSelection,
+} from "@/lib/menu";
 import { pricing, siteConfig } from "@/lib/site";
 
 /**
@@ -25,7 +32,8 @@ export type GiftRequest = {
   occasionDetails?: string;
   bouquet: string;
   coffeeShop: string;
-  coffeeOrder: string;
+  coffeeShopDetails?: string;
+  drinks: DrinkSelection[];
   giftNote?: string;
   recipient: string;
   address: string;
@@ -41,13 +49,21 @@ type SendResult = { ok: true; skipped: boolean } | { ok: false; error: string };
 
 export function formatGiftRequest(data: GiftRequest): string {
   const dash = (v?: string) => (v && v.trim() ? v.trim() : "-");
+  const totals = priceOrder(data.drinks, pricing);
+  const shop = data.coffeeShopDetails
+    ? `${data.coffeeShop} (${data.coffeeShopDetails})`
+    : data.coffeeShop;
+  const drinkLines = data.drinks.map(
+    (d, i) => `  ${i + 1}. ${describeDrink(d)} - ${formatMoney(priceDrink(d))}`
+  );
   return [
     "YOUR GIFT",
     `Occasion: ${dash(data.occasion)}`,
     `Occasion details: ${dash(data.occasionDetails)}`,
     `Bouquet collection: ${data.bouquet}`,
-    `Preferred coffee shop: ${data.coffeeShop}`,
-    `Their coffee order: ${data.coffeeOrder}`,
+    `Coffee shop: ${shop}`,
+    `Drinks (${data.drinks.length}):`,
+    ...drinkLines,
     `Gift note: ${dash(data.giftNote)}`,
     "",
     "DELIVERY",
@@ -62,7 +78,12 @@ export function formatGiftRequest(data: GiftRequest): string {
     `Email: ${data.email}`,
     `Phone: ${data.senderPhone}`,
     "",
-    `Estimated total: $${pricing.bundle} bundle + $${pricing.delivery} nearby delivery = $${pricing.subtotal} before extras and tax.`,
+    "ESTIMATED TOTAL",
+    `Flowers: ${formatMoney(totals.flowers)}`,
+    `Coffee: ${formatMoney(totals.drinks)}`,
+    `Delivery (within ${pricing.deliveryRadiusMiles} miles): ${formatMoney(totals.delivery)}`,
+    `Total: ${formatMoney(totals.total)}`,
+    "Drink prices are estimates based on the shop's menu. The final total is confirmed before payment.",
   ].join("\n");
 }
 
