@@ -1,0 +1,22 @@
+# Render Blueprint — one-click deploy for Latte Blooms.
+# In the Render dashboard: New > Blueprint, connect this repo, and Render reads
+# this file. Fill in the env var values (left blank/sync:false below) in the UI.
+services:
+  - type: web
+    name: latte-blooms
+    runtime: node
+    plan: starter
+    region: ohio
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: REQUEST_FORM_TO
+        sync: false
+      - key: REQUEST_FORM_FROM
+        sync: false

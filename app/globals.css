@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Latte Blooms brand tokens.
+ * Warm cream background, espresso-brown "ink" for text and buttons, blush
+ * rose and sage-olive accents. Token names follow the shadcn convention so
+ * future `npx shadcn add` components inherit the brand automatically.
+ */
+:root {
+  --radius: 0.5rem;
+
+  /* Core surfaces */
+  --background: #fbf8f1; /* cream */
+  --foreground: #51301f; /* ink */
+
+  /* Cards sit just above the cream so sections differentiate */
+  --card: #fffdf8;
+  --card-foreground: #51301f;
+  --popover: #fffdf8;
+  --popover-foreground: #51301f;
+
+  /* Espresso brown: primary CTA + heading color */
+  --primary: #51301f;
+  --primary-foreground: #ffffff;
+
+  /* Blush rose for soft highlights, olive for eyebrows */
+  --secondary: #ecd2c7; /* rose */
+  --secondary-foreground: #51301f;
+  --muted: #f0e8dd; /* booking band */
+  --muted-foreground: #766455;
+  --accent: #f3e5dc;
+  --accent-foreground: #51301f;
+
+  --destructive: #a42d2d;
+
+  --border: #dfd8cb; /* line */
+  --input: #d6cec0;
+  --ring: #9c6653;
+
+  /* Brand extras not in shadcn's set */
+  --olive: #70735a;
+  --mocha: #9c6653; /* italic accent in headings */
+  --caramel: #a67b61; /* step numbers */
+  --ribbon: #eaeade;
+  --sand: #85745f; /* fine print */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-olive: var(--olive);
+  --color-mocha: var(--mocha);
+  --color-caramel: var(--caramel);
+  --color-ribbon: var(--ribbon);
+  --color-sand: var(--sand);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), Georgia, "Times New Roman", serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-serif font-medium leading-[1.05] tracking-tight;
+  }
+}
+
+@utility eyebrow {
+  @apply text-[11px] font-bold uppercase tracking-[3px] text-olive;
+}
