@@ -14,6 +14,7 @@ import {
   menu,
   milks,
   priceDrink,
+  priceForSize,
   syrups,
   type DrinkSelection,
   type DrinkSize,
@@ -111,10 +112,10 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
                   }
                   className={selectClass}
                 >
-                  {drinkSizes.map((s, i) => (
+                  {drinkSizes.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.label} ({s.oz} oz)
-                      {item ? ` - ${formatMoney(item.prices[i])}` : ""}
+                      {item ? ` - ${formatMoney(priceForSize(item, s.id))}` : ""}
                     </option>
                   ))}
                 </select>

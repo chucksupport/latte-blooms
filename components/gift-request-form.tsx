@@ -17,6 +17,7 @@ import {
   formatMoney,
   priceDrink,
   priceOrder,
+  tipForPercent,
   type DrinkSelection,
 } from "@/lib/menu";
 import {
@@ -58,8 +59,16 @@ function todayIso() {
   ].join("-");
 }
 
-function PriceSummary({ drinks }: { drinks: DrinkSelection[] }) {
-  const totals = priceOrder(drinks, pricing);
+type TipChoice = "none" | `${number}` | "custom";
+
+function PriceSummary({
+  drinks,
+  tip,
+}: {
+  drinks: DrinkSelection[];
+  tip: number;
+}) {
+  const totals = priceOrder(drinks, tip);
   const drinkLabel = `${drinks.length} ${drinks.length === 1 ? "drink" : "drinks"}`;
   return (
     <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 rounded-lg border border-border bg-white/60 p-4 text-sm">
@@ -67,8 +76,14 @@ function PriceSummary({ drinks }: { drinks: DrinkSelection[] }) {
       <dd className="text-right">{formatMoney(totals.flowers)}</dd>
       <dt>Coffee ({drinkLabel})</dt>
       <dd className="text-right">{formatMoney(totals.drinks)}</dd>
-      <dt>Delivery (within {pricing.deliveryRadiusMiles} miles)</dt>
+      <dt>{`Delivery (within ${pricing.deliveryRadiusMiles} miles of ${pricing.deliveryBase})`}</dt>
       <dd className="text-right">{formatMoney(totals.delivery)}</dd>
+      {totals.tip > 0 ? (
+        <>
+          <dt>Tip</dt>
+          <dd className="text-right">{formatMoney(totals.tip)}</dd>
+        </>
+      ) : null}
       <dt className="mt-2 border-t border-border pt-2 font-semibold">
         Estimated total
       </dt>
@@ -76,6 +91,79 @@ function PriceSummary({ drinks }: { drinks: DrinkSelection[] }) {
         {formatMoney(totals.total)}
       </dd>
     </dl>
+  );
+}
+
+function TipPicker({
+  drinks,
+  choice,
+  custom,
+  onChoice,
+  onCustom,
+}: {
+  drinks: DrinkSelection[];
+  choice: TipChoice;
+  custom: string;
+  onChoice: (c: TipChoice) => void;
+  onCustom: (v: string) => void;
+}) {
+  const options: { value: TipChoice; label: string; hint?: string }[] = [
+    { value: "none", label: "No tip" },
+    ...pricing.tipPercents.map((p) => ({
+      value: `${p}` as TipChoice,
+      label: `${p}%`,
+      hint: formatMoney(tipForPercent(drinks, p)),
+    })),
+    { value: "custom", label: "Other" },
+  ];
+  const pill =
+    "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground";
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="text-sm font-medium">
+        Add a tip?{" "}
+        <span className="font-normal text-muted-foreground">(optional)</span>
+      </legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => (
+          <label key={o.value} className={`${pill} border-input bg-white`}>
+            <input
+              type="radio"
+              name="tipChoice"
+              value={o.value}
+              checked={choice === o.value}
+              onChange={() => onChoice(o.value)}
+              className="sr-only"
+            />
+            {o.label}
+            {o.hint ? <span className="ml-1 opacity-75">{o.hint}</span> : null}
+          </label>
+        ))}
+      </div>
+      {choice === "custom" ? (
+        <div className="flex items-center gap-2">
+          <Label htmlFor="customTip" className="sr-only">
+            Custom tip amount
+          </Label>
+          <span className="text-sm">$</span>
+          <Input
+            id="customTip"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={pricing.maxTip}
+            step="0.01"
+            value={custom}
+            onChange={(e) => onCustom(e.target.value)}
+            placeholder="0.00"
+            className="w-32"
+          />
+        </div>
+      ) : null}
+      <p className="text-xs text-sand">
+        Tips go straight to the person picking up and delivering your gift.
+      </p>
+    </fieldset>
   );
 }
 
@@ -88,7 +176,16 @@ export function GiftRequestForm() {
     defaultDrink(),
   ]);
   const [coffeeShop, setCoffeeShop] = React.useState<string>(coffeeShops[0]);
+  const [tipChoice, setTipChoice] = React.useState<TipChoice>("none");
+  const [customTip, setCustomTip] = React.useState("");
   const formRef = React.useRef<HTMLFormElement>(null);
+
+  const tip =
+    tipChoice === "none"
+      ? 0
+      : tipChoice === "custom"
+        ? Math.max(0, Math.min(Number(customTip) || 0, pricing.maxTip))
+        : tipForPercent(drinks, Number(tipChoice));
   const dialogRef = React.useRef<HTMLDialogElement>(null);
 
   React.useEffect(() => {
@@ -112,6 +209,7 @@ export function GiftRequestForm() {
       coffeeShop: get("coffeeShop"),
       coffeeShopDetails: get("coffeeShopDetails"),
       drinks,
+      tip,
       giftNote: get("giftNote"),
       recipient: get("recipient"),
       address: get("address"),
@@ -148,6 +246,8 @@ export function GiftRequestForm() {
       setBouquet("");
       setDrinks([defaultDrink()]);
       setCoffeeShop(coffeeShops[0]);
+      setTipChoice("none");
+      setCustomTip("");
       setStatus("success");
     } catch (err) {
       setStatus("review");
@@ -178,7 +278,7 @@ export function GiftRequestForm() {
     );
   }
 
-  const draftTotals = draft ? priceOrder(draft.drinks, pricing) : null;
+  const draftTotals = draft ? priceOrder(draft.drinks, draft.tip) : null;
 
   return (
     <>
@@ -200,11 +300,11 @@ export function GiftRequestForm() {
             <strong className="text-foreground">
               ${pricing.flowers} signature bouquet
             </strong>{" "}
-            + their coffee at menu price +{" "}
+            + their coffee +{" "}
             <strong className="text-foreground">
               ${pricing.delivery} delivery
             </strong>{" "}
-            {`within ${pricing.deliveryRadiusMiles} miles. Farther out? We'll quote delivery before you pay.`}
+            {`within ${pricing.deliveryRadiusMiles} miles of ${pricing.deliveryBase}. Farther out? We'll quote delivery before you pay.`}
           </p>
 
           <div className="grid gap-2">
@@ -332,11 +432,19 @@ export function GiftRequestForm() {
 
           <DrinkBuilder drinks={drinks} onChange={setDrinks} />
 
-          <PriceSummary drinks={drinks} />
+          <TipPicker
+            drinks={drinks}
+            choice={tipChoice}
+            custom={customTip}
+            onChoice={setTipChoice}
+            onCustom={setCustomTip}
+          />
+
+          <PriceSummary drinks={drinks} tip={tip} />
           <p className="text-xs text-sand">
-            Drink prices are estimates based on the shop&apos;s menu and may
-            change with the season. Your final total is confirmed by email
-            before payment.
+            Drink prices include our coffee-run fee and are based on the
+            shop&apos;s menu, so they may change with the season. Your final
+            total is confirmed by email before payment.
           </p>
         </fieldset>
 
@@ -498,8 +606,9 @@ export function GiftRequestForm() {
             </strong>{" "}
             ({formatMoney(draftTotals.flowers)} flowers +{" "}
             {formatMoney(draftTotals.drinks)} coffee +{" "}
-            {formatMoney(draftTotals.delivery)} delivery). We confirm
-            availability and your final total before payment.
+            {formatMoney(draftTotals.delivery)} delivery
+            {draftTotals.tip > 0 ? ` + ${formatMoney(draftTotals.tip)} tip` : ""}
+            ). We confirm availability and your final total before payment.
           </p>
         ) : null}
         {draft ? (

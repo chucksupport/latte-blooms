@@ -34,6 +34,8 @@ export type GiftRequest = {
   coffeeShop: string;
   coffeeShopDetails?: string;
   drinks: DrinkSelection[];
+  /** Optional tip in dollars, collected with payment. */
+  tip: number;
   giftNote?: string;
   recipient: string;
   address: string;
@@ -49,7 +51,7 @@ type SendResult = { ok: true; skipped: boolean } | { ok: false; error: string };
 
 export function formatGiftRequest(data: GiftRequest): string {
   const dash = (v?: string) => (v && v.trim() ? v.trim() : "-");
-  const totals = priceOrder(data.drinks, pricing);
+  const totals = priceOrder(data.drinks, data.tip);
   const shop = data.coffeeShopDetails
     ? `${data.coffeeShop} (${data.coffeeShopDetails})`
     : data.coffeeShop;
@@ -81,9 +83,10 @@ export function formatGiftRequest(data: GiftRequest): string {
     "ESTIMATED TOTAL",
     `Flowers: ${formatMoney(totals.flowers)}`,
     `Coffee: ${formatMoney(totals.drinks)}`,
-    `Delivery (within ${pricing.deliveryRadiusMiles} miles): ${formatMoney(totals.delivery)}`,
+    `Delivery (within ${pricing.deliveryRadiusMiles} miles of ${pricing.deliveryBase}): ${formatMoney(totals.delivery)}`,
+    `Tip: ${totals.tip ? formatMoney(totals.tip) : "none"}`,
     `Total: ${formatMoney(totals.total)}`,
-    "Drink prices are estimates based on the shop's menu. The final total is confirmed before payment.",
+    "Drink prices include our coffee-run fee and are based on the shop's menu. The final total is confirmed before payment.",
   ].join("\n");
 }
 

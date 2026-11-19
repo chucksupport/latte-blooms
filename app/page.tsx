@@ -82,8 +82,9 @@ export default function HomePage() {
           </div>
           <p className="mt-4 max-w-[390px] text-sm text-muted-foreground md:mt-0">
             Every gift starts with a ${pricing.flowers} signature bouquet and a
-            personal note. Add their favorite coffee at menu price, plus $
-            {pricing.delivery} delivery nearby. Choose your flower style below.
+            personal note. Add their favorite coffee, plus ${pricing.delivery}{" "}
+            delivery around {pricing.deliveryBase.split(",")[0]}. Choose your
+            flower style below.
           </p>
         </div>
         <CollectionGrid />

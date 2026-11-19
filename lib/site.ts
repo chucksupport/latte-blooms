@@ -12,13 +12,20 @@ export const siteConfig = {
 } as const;
 
 // Pricing. Flowers are a flat price; each drink is priced from the menu in
-// lib/menu.ts; delivery is flat inside the delivery radius and quoted beyond it.
-// TODO: confirm the delivery radius (and where it's measured from) with the owner.
+// lib/menu.ts (shop price plus coffeeMarkup, rounded up to the quarter);
+// delivery is flat inside the delivery radius and quoted beyond it.
+// TODO: confirm the 15-mile radius with the owner (Wadsworth is confirmed).
 export const pricing = {
   flowers: 25,
+  /** Added on top of the shop's drink price for the coffee run (0.15 = 15%). */
+  coffeeMarkup: 0.15,
   delivery: 8,
   deliveryRadiusMiles: 15,
+  deliveryBase: "Wadsworth, Ohio",
   maxDrinks: 4,
+  /** Tip presets shown on the form, as percentages of flowers + coffee. */
+  tipPercents: [10, 15, 20],
+  maxTip: 500,
 } as const;
 
 export const collections = [

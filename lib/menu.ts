@@ -1,12 +1,15 @@
 // Drink menu and price rules.
 //
-// Latte Blooms buys the drink at the coffee shop, so the customer pays about
-// what the shop charges. Prices below are an estimate based on Starbucks' U.S.
-// menu (late 2025: Tall / Grande / Venti), rounded up to the nearest quarter so
-// sales tax and small regional differences are covered. The owner confirms the
-// final total by email before payment, so these only need to be close.
+// Latte Blooms buys the drink at the coffee shop. Prices below are the shop's
+// price, estimated from Starbucks' U.S. menu (late 2025: Tall / Grande / Venti)
+// and rounded up to the nearest quarter to cover sales tax. The customer price
+// is that plus `pricing.coffeeMarkup` (see lib/site.ts), rounded up to the
+// quarter again. The owner confirms the final total by email before payment,
+// so these only need to be close.
 //
 // To change a price: edit the numbers here. [small, medium, large].
+
+import { pricing } from "@/lib/site";
 
 export type DrinkSize = "small" | "medium" | "large";
 export type DrinkTemp = "hot" | "iced";
@@ -143,13 +146,26 @@ export function getMenuItem(id: string): MenuItem | undefined {
 
 const sizeIndex: Record<DrinkSize, 0 | 1 | 2> = { small: 0, medium: 1, large: 2 };
 
-export function priceDrink(d: DrinkSelection): number {
+/** What the shop charges for this drink, before our markup. */
+export function shopPrice(d: DrinkSelection): number {
   const item = menuById.get(d.item);
   if (!item) return 0;
   let total = item.prices[sizeIndex[d.size]];
   total += syrups.find((s) => s.id === d.syrup)?.price ?? 0;
   for (const e of d.extras) total += extras.find((x) => x.id === e)?.price ?? 0;
   return round2(total);
+}
+
+/** What the customer pays: shop price plus the coffee-run markup. */
+export function priceDrink(d: DrinkSelection): number {
+  const base = shopPrice(d);
+  if (!base) return 0;
+  return ceilQuarter(base * (1 + pricing.coffeeMarkup));
+}
+
+/** Customer price for a single size of a menu item (for the size dropdown). */
+export function priceForSize(item: MenuItem, size: DrinkSize): number {
+  return ceilQuarter(item.prices[sizeIndex[size]] * (1 + pricing.coffeeMarkup));
 }
 
 export function describeDrink(d: DrinkSelection): string {
@@ -173,20 +189,36 @@ export type OrderTotals = {
   flowers: number;
   drinks: number;
   delivery: number;
+  tip: number;
   total: number;
 };
 
 export function priceOrder(
   drinks: readonly DrinkSelection[],
-  base: { flowers: number; delivery: number }
+  tip = 0
 ): OrderTotals {
   const drinkTotal = round2(drinks.reduce((sum, d) => sum + priceDrink(d), 0));
+  const safeTip = normalizeTip(tip);
   return {
-    flowers: base.flowers,
+    flowers: pricing.flowers,
     drinks: drinkTotal,
-    delivery: base.delivery,
-    total: round2(base.flowers + drinkTotal + base.delivery),
+    delivery: pricing.delivery,
+    tip: safeTip,
+    total: round2(pricing.flowers + drinkTotal + pricing.delivery + safeTip),
   };
+}
+
+/** Tip as a percentage of flowers + coffee (not delivery), in dollars. */
+export function tipForPercent(drinks: readonly DrinkSelection[], percent: number): number {
+  const subtotal = pricing.flowers + drinks.reduce((s, d) => s + priceDrink(d), 0);
+  return round2((subtotal * percent) / 100);
+}
+
+/** Clamps untrusted tip input to a sane dollar amount. */
+export function normalizeTip(input: unknown): number {
+  const n = typeof input === "string" ? Number(input) : input;
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return 0;
+  return round2(Math.min(n, pricing.maxTip));
 }
 
 export function formatMoney(n: number): string {
@@ -238,4 +270,8 @@ export function normalizeDrink(input: unknown): DrinkSelection | null {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function ceilQuarter(n: number): number {
+  return Math.ceil(n * 4 - 1e-9) / 4;
 }

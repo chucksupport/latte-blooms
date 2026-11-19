@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { sendGiftRequest, type GiftRequest } from "@/lib/email";
-import { coffeeShops, normalizeDrink, type DrinkSelection } from "@/lib/menu";
+import {
+  coffeeShops,
+  normalizeDrink,
+  normalizeTip,
+  type DrinkSelection,
+} from "@/lib/menu";
 import { collectionNames, occasions, pricing, timeWindows } from "@/lib/site";
 
 type Body = Partial<Record<keyof GiftRequest | "website", unknown>>;
@@ -50,6 +55,7 @@ export async function POST(request: Request) {
     coffeeShop: str(body.coffeeShop, 40),
     coffeeShopDetails: str(body.coffeeShopDetails, 150),
     drinks,
+    tip: normalizeTip(body.tip),
     giftNote: str(body.giftNote, 500),
     recipient: str(body.recipient, 100),
     address: str(body.address, 250),
