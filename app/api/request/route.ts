@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { sendGiftRequest, type GiftRequest } from "@/lib/email";
 import {
-  coffeeShops,
+  isCoffeeShop,
   normalizeDrink,
   normalizeTip,
   type DrinkSelection,
@@ -31,7 +31,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Drinks: every one must match the menu so the server-side price is trusted.
+  // The shop decides which menu the drinks are checked and priced against.
+  const coffeeShop = str(body.coffeeShop, 40);
+  if (!isCoffeeShop(coffeeShop)) {
+    return bad("Please choose a coffee shop.");
+  }
+
+  // Drinks: every one must match the shop's menu so the server-side price is trusted.
   const rawDrinks = Array.isArray(body.drinks) ? body.drinks : [];
   if (rawDrinks.length < 1) {
     return bad("Please add at least one drink.");
@@ -43,8 +49,10 @@ export async function POST(request: Request) {
   }
   const drinks: DrinkSelection[] = [];
   for (const raw of rawDrinks) {
-    const drink = normalizeDrink(raw);
-    if (!drink) return bad("One of the drinks isn't on our menu. Please re-check it.");
+    const drink = normalizeDrink(raw, coffeeShop);
+    if (!drink) {
+      return bad(`One of the drinks isn't on the ${coffeeShop} menu. Please re-check it.`);
+    }
     drinks.push(drink);
   }
 
@@ -52,7 +60,7 @@ export async function POST(request: Request) {
     occasion: str(body.occasion, 60),
     occasionDetails: str(body.occasionDetails, 200),
     bouquet: str(body.bouquet, 60),
-    coffeeShop: str(body.coffeeShop, 40),
+    coffeeShop,
     coffeeShopDetails: str(body.coffeeShopDetails, 150),
     drinks,
     tip: normalizeTip(body.tip),
@@ -87,9 +95,6 @@ export async function POST(request: Request) {
   }
   if (!(collectionNames as string[]).includes(data.bouquet)) {
     return bad("Please choose a bouquet collection.");
-  }
-  if (!(coffeeShops as readonly string[]).includes(data.coffeeShop)) {
-    return bad("Please choose a coffee shop.");
   }
   if (!(timeWindows as readonly string[]).includes(data.timeWindow)) {
     return bad("Please choose a delivery time window.");

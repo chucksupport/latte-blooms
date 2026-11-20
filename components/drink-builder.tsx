@@ -7,18 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   defaultDrink,
-  drinkSizes,
-  extras,
   formatMoney,
   getMenuItem,
-  menu,
-  milks,
+  getShopMenu,
   priceDrink,
   priceForSize,
-  syrups,
+  type CoffeeShop,
   type DrinkSelection,
   type DrinkSize,
   type DrinkTemp,
+  type ShopSize,
 } from "@/lib/menu";
 import { pricing } from "@/lib/site";
 
@@ -26,20 +24,29 @@ export const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 type Props = {
+  shop: CoffeeShop;
   drinks: DrinkSelection[];
   onChange: (drinks: DrinkSelection[]) => void;
 };
 
-export function DrinkBuilder({ drinks, onChange }: Props) {
+/** "Medium (Grande, 16 oz)" or "Medium (14 oz)". */
+function sizeLabel(s: ShopSize, temp: DrinkTemp) {
+  const detail = [s.alias, `${s.oz[temp]} oz`].filter(Boolean).join(", ");
+  return `${s.label} (${detail})`;
+}
+
+export function DrinkBuilder({ shop, drinks, onChange }: Props) {
+  const menu = getShopMenu(shop);
+
   function update(index: number, patch: Partial<DrinkSelection>) {
     const next = drinks.map((d, i) => {
       if (i !== index) return d;
       const merged = { ...d, ...patch };
       // Keep the drink consistent with what the menu allows for it.
-      const item = getMenuItem(merged.item);
+      const item = getMenuItem(shop, merged.item);
       if (item) {
         if (!item.temps.includes(merged.temp)) merged.temp = item.temps[0];
-        if (!item.milk) merged.milk = milks[0];
+        if (!item.milk) merged.milk = menu.milks[0];
       }
       return merged;
     });
@@ -56,7 +63,7 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
   return (
     <div className="grid gap-4">
       {drinks.map((drink, index) => {
-        const item = getMenuItem(drink.item);
+        const item = getMenuItem(shop, drink.item);
         const n = `drink-${index}`;
         return (
           <div
@@ -89,7 +96,7 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
                 onChange={(e) => update(index, { item: e.target.value })}
                 className={selectClass}
               >
-                {menu.map((group) => (
+                {menu.categories.map((group) => (
                   <optgroup key={group.category} label={group.category}>
                     {group.items.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -112,10 +119,12 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
                   }
                   className={selectClass}
                 >
-                  {drinkSizes.map((s) => (
+                  {menu.sizes.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.label} ({s.oz} oz)
-                      {item ? ` - ${formatMoney(priceForSize(item, s.id))}` : ""}
+                      {sizeLabel(s, drink.temp)}
+                      {item
+                        ? ` - ${formatMoney(priceForSize(item, s.id, drink.temp))}`
+                        : ""}
                     </option>
                   ))}
                 </select>
@@ -147,7 +156,7 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
                     onChange={(e) => update(index, { milk: e.target.value })}
                     className={selectClass}
                   >
-                    {milks.map((m) => (
+                    {menu.milks.map((m) => (
                       <option key={m} value={m}>
                         {m}
                       </option>
@@ -157,17 +166,17 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
               ) : null}
 
               <div className="grid gap-2">
-                <Label htmlFor={`${n}-syrup`}>Flavor syrup</Label>
+                <Label htmlFor={`${n}-flavor`}>{menu.flavorLabel}</Label>
                 <select
-                  id={`${n}-syrup`}
-                  value={drink.syrup}
-                  onChange={(e) => update(index, { syrup: e.target.value })}
+                  id={`${n}-flavor`}
+                  value={drink.flavor}
+                  onChange={(e) => update(index, { flavor: e.target.value })}
                   className={selectClass}
                 >
-                  {syrups.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                      {s.price ? ` (+${formatMoney(s.price)})` : ""}
+                  {menu.flavors.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                      {f.price ? ` (+${formatMoney(f.price)})` : ""}
                     </option>
                   ))}
                 </select>
@@ -177,7 +186,7 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium">Extras</legend>
               <div className="flex flex-wrap gap-x-5 gap-y-2">
-                {extras.map((x) => (
+                {menu.extras.map((x) => (
                   <label
                     key={x.id}
                     className="inline-flex items-center gap-2 text-sm"
@@ -222,7 +231,7 @@ export function DrinkBuilder({ drinks, onChange }: Props) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => onChange([...drinks, defaultDrink()])}
+          onClick={() => onChange([...drinks, defaultDrink(shop)])}
           className="justify-self-start"
         >
           <Plus /> Add another drink

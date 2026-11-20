@@ -12,12 +12,16 @@ import { Textarea } from "@/components/ui/textarea";
 import type { GiftRequest } from "@/lib/email";
 import {
   coffeeShops,
+  convertDrink,
   defaultDrink,
   describeDrink,
   formatMoney,
+  getShopMenu,
+  isCoffeeShop,
   priceDrink,
   priceOrder,
   tipForPercent,
+  type CoffeeShop,
   type DrinkSelection,
 } from "@/lib/menu";
 import {
@@ -175,7 +179,7 @@ export function GiftRequestForm() {
   const [drinks, setDrinks] = React.useState<DrinkSelection[]>(() => [
     defaultDrink(),
   ]);
-  const [coffeeShop, setCoffeeShop] = React.useState<string>(coffeeShops[0]);
+  const [coffeeShop, setCoffeeShop] = React.useState<CoffeeShop>(coffeeShops[0]);
   const [tipChoice, setTipChoice] = React.useState<TipChoice>("none");
   const [customTip, setCustomTip] = React.useState("");
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -187,6 +191,13 @@ export function GiftRequestForm() {
         ? Math.max(0, Math.min(Number(customTip) || 0, pricing.maxTip))
         : tipForPercent(drinks, Number(tipChoice));
   const dialogRef = React.useRef<HTMLDialogElement>(null);
+
+  function changeShop(next: string) {
+    if (!isCoffeeShop(next)) return;
+    setCoffeeShop(next);
+    // Carry the drinks over to the new shop's menu where it has a match.
+    setDrinks((current) => current.map((d) => convertDrink(d, next)));
+  }
 
   React.useEffect(() => {
     const dialog = dialogRef.current;
@@ -393,7 +404,7 @@ export function GiftRequestForm() {
                 name="coffeeShop"
                 required
                 value={coffeeShop}
-                onChange={(e) => setCoffeeShop(e.target.value)}
+                onChange={(e) => changeShop(e.target.value)}
                 className={selectClass}
               >
                 {coffeeShops.map((s) => (
@@ -415,22 +426,16 @@ export function GiftRequestForm() {
                 name="coffeeShopDetails"
                 maxLength={150}
                 placeholder={
-                  coffeeShop === coffeeShops[0]
-                    ? "Their usual Starbucks, if they have one"
-                    : "Shop name and town"
+                  coffeeShop === coffeeShops[2]
+                    ? "Shop name and town"
+                    : `Their usual ${coffeeShop}, if they have one`
                 }
               />
             </div>
           </div>
-          {coffeeShop !== coffeeShops[0] ? (
-            <p className="text-xs text-sand">
-              Prices below are based on Starbucks&apos; menu. We&apos;ll match
-              the drink as closely as we can at {coffeeShop === coffeeShops[1] ? coffeeShop : "your shop"} and
-              confirm the actual price before you pay.
-            </p>
-          ) : null}
+          <p className="text-xs text-sand">{getShopMenu(coffeeShop).note}</p>
 
-          <DrinkBuilder drinks={drinks} onChange={setDrinks} />
+          <DrinkBuilder shop={coffeeShop} drinks={drinks} onChange={setDrinks} />
 
           <TipPicker
             drinks={drinks}
