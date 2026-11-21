@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import Script from "next/script";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -81,6 +82,10 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <SiteFooter />
       </body>
+      <Script
+        src="https://umami-f1cs.onrender.com/script.js"
+        data-website-id="3b3b3ce8-4518-426d-8604-a46fc12795b4"
+      />
     </html>
   );
 }
